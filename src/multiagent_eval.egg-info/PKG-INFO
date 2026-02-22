@@ -1,0 +1,220 @@
+Metadata-Version: 2.4
+Name: multiagent-eval
+Version: 0.1.0
+Summary: Open Source Multi-Agent System Evaluation Framework
+Author: MultiAgent-Eval Contributors
+License: MIT
+Project-URL: Repository, https://github.com/multiagent-eval/multiagent-eval
+Project-URL: Documentation, https://github.com/multiagent-eval/multiagent-eval#readme
+Keywords: multi-agent,evaluation,llm,ai,langgraph,crewai,autogen
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic>=2.0
+Requires-Dist: pydantic-settings>=2.0
+Requires-Dist: litellm>=1.0
+Requires-Dist: sentence-transformers>=2.2
+Requires-Dist: numpy>=1.24
+Requires-Dist: networkx>=3.0
+Requires-Dist: matplotlib>=3.7
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: typer>=0.9
+Requires-Dist: streamlit>=1.28
+Requires-Dist: pyvis>=0.3
+Requires-Dist: jinja2>=3.1
+Requires-Dist: structlog>=23.0
+Provides-Extra: postgres
+Requires-Dist: sqlalchemy>=2.0; extra == "postgres"
+Requires-Dist: psycopg2-binary>=2.9; extra == "postgres"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21; extra == "dev"
+Requires-Dist: ruff>=0.1; extra == "dev"
+
+# MultiAgent-Eval
+
+**Open Source Multi-Agent System Evaluation Framework**
+
+MultiAgent-Eval enables engineers to systematically evaluate multi-agent AI systems — not just single LLM calls. The framework detects failure modes unique to multi-agent pipelines: **agent-to-agent error propagation**, **cascading hallucinations**, **orchestration breakdowns**, and **inter-agent consistency drift**.
+
+Target users: ML engineers and AI teams building agentic systems with LangGraph, CrewAI, AutoGen, or custom orchestration.
+
+---
+
+## Problem Statement
+
+Single-LLM evaluation tools (e.g., promptfoo, Braintrust, LangSmith) focus on individual model calls. They cannot answer:
+
+- Did Agent B corrupt Agent A's output when passing it downstream?
+- Do agents contradict each other?
+- Did a single agent failure cascade through the pipeline?
+- Was critical information from early agents preserved to the final output?
+
+MultiAgent-Eval fills this gap with pipeline-level metrics, error propagation analysis, and bias-aware LLM-as-Judge.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         multiagent-eval                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│  core/           trace, metrics, runner, state_machine, LLMGateway        │
+│  judges/         LLMJudge (CoT, bias), ConsistencyJudge, PropagationJudge │
+│  bias_detection/  primacy, verbosity, tone, cascade                      │
+│  golden_datasets/ schema, manager, annotator, inter-rater agreement      │
+│  reports/        JSON, HTML (D3.js), Streamlit dashboard                │
+│  integrations/   LangGraph, CrewAI, AutoGen, Custom adapters            │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Quickstart
+
+```bash
+# 1. Kurulum (veya PYTHONPATH=src kullan)
+pip install -e .
+
+# 2. Ücretsiz modeller için Ollama (opsiyonel)
+ollama pull mistral   # İlk seferde ~4GB indirir
+
+# 3. Çalıştır
+python run.py
+# veya: multiagent-eval run --config eval_config.yaml
+```
+
+```python
+from multiagent_eval.core.trace import TraceCapture, AgentTrace
+from multiagent_eval.core.runner import EvalConfig, EvaluationRunner
+from multiagent_eval.reports.html_reporter import HTMLReporter
+
+# 1. Wrap your agent with TraceCapture
+with TraceCapture(agent_id="researcher", agent_role="web_search") as cap:
+    cap.trace.input_received = {"query": "What is multi-agent AI?"}
+    result = my_agent.run(cap.trace.input_received)
+    cap.output_produced = result
+
+# 2. Build pipeline trace and run evaluation
+from multiagent_eval.core.trace import PipelineTrace
+pt = PipelineTrace(pipeline_id="run-1", pipeline_name="my_pipeline", agents=[cap.trace])
+pt.final_output = result
+
+runner = EvaluationRunner(config=EvalConfig(pipeline_name="my_pipeline"))
+eval_result = runner.run(pt, ground_truth={"expected": "..."})
+
+# 3. Generate report
+HTMLReporter().generate(eval_result, "report.html")
+```
+
+---
+
+## API Reference
+
+### Core Classes
+
+| Class | Description |
+|-------|-------------|
+| `AgentTrace` | Per-agent execution trace: inputs, outputs, LLM calls, tool calls, latency, cost |
+| `PipelineTrace` | Full pipeline trace: list of AgentTrace, state transitions, final output |
+| `TraceCapture` | Context manager to wrap agent execution with minimal code change |
+| `MetricResult` | Score (0–1), explanation, flagged, threshold |
+| `EvaluationRunner` | Runs configured metrics on PipelineTrace |
+| `LLMJudge` | LLM-as-Judge with CoT, bias detection (primacy, verbosity, tone) |
+| `PropagationJudge` | Error propagation analysis, fidelity scores, corruption origins |
+
+### Metrics
+
+**Per-agent:** `factual_accuracy`, `output_completeness`, `hallucination_score`, `latency_compliance`, `cost_efficiency`
+
+**Pipeline-level:** `error_propagation_score`, `inter_agent_consistency`, `orchestration_adherence`, `cascade_failure_detection`, `information_retention`
+
+---
+
+## Example Config (eval_config.yaml)
+
+```yaml
+pipeline:
+  name: "my_research_pipeline"
+  adapter: "langgraph"
+
+evaluation:
+  golden_dataset: "datasets/research_qa.json"
+  metrics:
+    - factual_accuracy
+    - inter_agent_consistency
+    - error_propagation_score
+    - cascade_failure_detection
+  thresholds:
+    factual_accuracy: 0.8
+    inter_agent_consistency: 0.75
+
+judge:
+  primary_model: "gpt-4o"
+  fallback_model: "claude-sonnet-4-6"
+  bias_detection: true
+  cot_prompting: true
+
+reporting:
+  output_dir: "eval_results/"
+  formats: ["json", "html"]
+  dashboard: true
+```
+
+---
+
+## CLI
+
+```bash
+multiagent-eval run --config eval_config.yaml
+multiagent-eval report --input results.json --format html
+multiagent-eval dataset add --name my_dataset
+multiagent-eval dashboard   # Launches Streamlit
+multiagent-eval bias-check --trace trace.json
+```
+
+---
+
+## HTML Report
+
+The HTML reporter generates a self-contained single-file report with:
+
+- Pipeline overview: total score, pass/fail, cost, latency
+- Per-agent scorecards with colored badges (green/yellow/red)
+- Error propagation graph (interactive D3.js)
+- Bias detection results per judge call
+- Cost breakdown: per-agent, per-LLM-call
+- Side-by-side diff view for agent outputs
+
+---
+
+## Contributing
+
+1. Fork the repo
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a PR
+
+---
+
+## Roadmap
+
+1. **Async pipeline support** — TraceCapture for async agents
+2. **PostgreSQL backend** — Optional DB for golden datasets at scale
+3. **A/B comparison** — Statistical significance for pipeline variants
+4. **CI/CD integration** — GitHub Actions, regression gates
+5. **Multi-run trend charts** — Score/cost over time in HTML report
+
+---
+
+## License
+
+MIT

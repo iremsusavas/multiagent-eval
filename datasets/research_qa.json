@@ -1,0 +1,164 @@
+{
+  "name": "research_qa",
+  "description": "Production-like golden dataset for multi-agent research pipeline evaluation",
+  "version": 2,
+  "schema_version": "1.0",
+  "metadata": {
+    "environment": "production_simulation",
+    "pipeline": "researcher -> writer",
+    "agents": ["researcher", "writer"]
+  },
+  "examples": [
+    {
+      "example_id": "ex1",
+      "pipeline_input": {"query": "What is multi-agent AI?"},
+      "expected_outputs_per_agent": {
+        "researcher": {"summary": "Multi-agent AI involves multiple AI agents collaborating to solve complex tasks."},
+        "writer": {"report": "Multi-agent AI systems use multiple agents that work together to solve complex tasks."}
+      },
+      "final_expected_output": {
+        "report": "Multi-agent AI systems use multiple agents that work together to solve complex tasks."
+      },
+      "tags": ["research", "ai", "definition"],
+      "difficulty": "easy",
+      "human_labels": [],
+      "metadata": {"category": "definition", "expected_tokens": 50}
+    },
+    {
+      "example_id": "ex2",
+      "pipeline_input": {"query": "Compare LangGraph vs CrewAI for building agent workflows"},
+      "expected_outputs_per_agent": {
+        "researcher": {"summary": "LangGraph: state machine based, graph structure. CrewAI: role-based, task delegation."},
+        "writer": {"report": "LangGraph uses state machines for graph-based workflows. CrewAI uses role-based task delegation."}
+      },
+      "final_expected_output": {
+        "report": "LangGraph uses state machines for graph-based workflows. CrewAI uses role-based task delegation. Both are suitable for multi-agent systems."
+      },
+      "tags": ["research", "comparison", "frameworks"],
+      "difficulty": "medium",
+      "human_labels": [],
+      "metadata": {"category": "comparison", "expected_tokens": 80}
+    },
+    {
+      "example_id": "ex3",
+      "pipeline_input": {"query": "What are the main failure modes in multi-agent systems?"},
+      "expected_outputs_per_agent": {
+        "researcher": {"summary": "Error propagation, cascading failures, orchestration breakdown, inter-agent inconsistency."},
+        "writer": {"report": "Key failure modes: error propagation between agents, cascading failures, orchestration breakdown, inter-agent inconsistency."}
+      },
+      "final_expected_output": {
+        "report": "Key failure modes in multi-agent systems include: error propagation between agents, cascading failures, orchestration breakdown, and inter-agent inconsistency."
+      },
+      "tags": ["research", "failure_modes", "reliability"],
+      "difficulty": "medium",
+      "human_labels": [],
+      "metadata": {"category": "technical", "expected_tokens": 60}
+    },
+    {
+      "example_id": "ex4",
+      "pipeline_input": {"query": "Summarize the benefits of agentic AI for enterprise software"},
+      "expected_outputs_per_agent": {
+        "researcher": {"summary": "Automation, task decomposition, parallel execution, human-in-the-loop."},
+        "writer": {"report": "Benefits: automation, task decomposition, parallel execution, human-in-the-loop workflows."}
+      },
+      "final_expected_output": {
+        "report": "Agentic AI benefits for enterprise: automation, task decomposition, parallel execution, and human-in-the-loop workflows."
+      },
+      "tags": ["research", "enterprise", "summarization"],
+      "difficulty": "easy",
+      "human_labels": [],
+      "metadata": {"category": "summarization", "expected_tokens": 50}
+    },
+    {
+      "example_id": "ex5",
+      "pipeline_input": {"query": "What is RAG and how does it relate to agent systems?"},
+      "expected_outputs_per_agent": {
+        "researcher": {"summary": "RAG: Retrieval-Augmented Generation. Agents use RAG for grounding."},
+        "writer": {"report": "RAG (Retrieval-Augmented Generation) grounds LLM outputs. Agents use RAG for retrieval and context."}
+      },
+      "final_expected_output": {
+        "report": "RAG (Retrieval-Augmented Generation) grounds LLM outputs with retrieved context. Agent systems use RAG for grounding and knowledge retrieval."
+      },
+      "tags": ["research", "rag", "technical"],
+      "difficulty": "medium",
+      "human_labels": [],
+      "metadata": {"category": "technical", "expected_tokens": 60}
+    },
+    {
+      "example_id": "ex6",
+      "pipeline_input": {"query": "Explain the difference between single-LLM and multi-agent evaluation"},
+      "expected_outputs_per_agent": {
+        "researcher": {"summary": "Single-LLM: per-call metrics. Multi-agent: propagation, consistency, orchestration."},
+        "writer": {"report": "Single-LLM eval focuses on per-call metrics. Multi-agent eval adds propagation, consistency, orchestration."}
+      },
+      "final_expected_output": {
+        "report": "Single-LLM evaluation focuses on per-call metrics. Multi-agent evaluation adds error propagation, inter-agent consistency, and orchestration adherence."
+      },
+      "tags": ["research", "evaluation", "comparison"],
+      "difficulty": "hard",
+      "human_labels": [],
+      "metadata": {"category": "definition", "expected_tokens": 70}
+    },
+    {
+      "example_id": "ex7",
+      "pipeline_input": {"query": "What tools do agents typically use for web search?"},
+      "expected_outputs_per_agent": {
+        "researcher": {"summary": "SerpAPI, Tavily, DuckDuckGo, custom search APIs."},
+        "writer": {"report": "Common tools: SerpAPI, Tavily, DuckDuckGo, custom search APIs."}
+      },
+      "final_expected_output": {
+        "report": "Agents commonly use SerpAPI, Tavily, DuckDuckGo, and custom search APIs for web search."
+      },
+      "tags": ["research", "tools", "web_search"],
+      "difficulty": "easy",
+      "human_labels": [],
+      "metadata": {"category": "tools", "expected_tokens": 40}
+    },
+    {
+      "example_id": "ex8",
+      "pipeline_input": {"query": "How do you handle agent failures and retries in production?"},
+      "expected_outputs_per_agent": {
+        "researcher": {"summary": "Exponential backoff, fallbacks, circuit breakers, timeout handling."},
+        "writer": {"report": "Strategies: exponential backoff, fallback agents, circuit breakers, timeout handling."}
+      },
+      "final_expected_output": {
+        "report": "Production strategies for agent failures: exponential backoff, fallback agents, circuit breakers, and timeout handling."
+      },
+      "tags": ["research", "reliability", "production"],
+      "difficulty": "hard",
+      "human_labels": [],
+      "metadata": {"category": "production", "expected_tokens": 50}
+    },
+    {
+      "example_id": "ex9",
+      "pipeline_input": {"query": "What is chain-of-thought prompting and when is it useful?"},
+      "expected_outputs_per_agent": {
+        "researcher": {"summary": "CoT: step-by-step reasoning. Useful for complex reasoning."},
+        "writer": {"report": "Chain-of-thought: step-by-step reasoning. Useful for complex reasoning tasks."}
+      },
+      "final_expected_output": {
+        "report": "Chain-of-thought prompting elicits step-by-step reasoning. It is useful for complex reasoning and multi-step tasks."
+      },
+      "tags": ["research", "prompting", "reasoning"],
+      "difficulty": "medium",
+      "human_labels": [],
+      "metadata": {"category": "technical", "expected_tokens": 55}
+    },
+    {
+      "example_id": "ex10",
+      "pipeline_input": {"query": "What are the main challenges in evaluating multi-agent systems?"},
+      "expected_outputs_per_agent": {
+        "researcher": {"summary": "Propagation, consistency, orchestration, cost, latency."},
+        "writer": {"report": "Challenges: error propagation, inter-agent consistency, orchestration, cost, latency."}
+      },
+      "final_expected_output": {
+        "report": "Main challenges: error propagation between agents, inter-agent consistency, orchestration adherence, cost tracking, and latency."
+      },
+      "tags": ["research", "evaluation", "challenges"],
+      "difficulty": "hard",
+      "human_labels": [],
+      "metadata": {"category": "evaluation", "expected_tokens": 60}
+    }
+  ],
+  "snapshots": {}
+}

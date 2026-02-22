@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multiagent-eval"
+version = "0.1.0"
+description = "Open Source Multi-Agent System Evaluation Framework"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "MultiAgent-Eval Contributors"}
+]
+keywords = ["multi-agent", "evaluation", "llm", "ai", "langgraph", "crewai", "autogen"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "litellm>=1.0",
+    "sentence-transformers>=2.2",
+    "numpy>=1.24",
+    "networkx>=3.0",
+    "matplotlib>=3.7",
+    "pyyaml>=6.0",
+    "typer>=0.9",
+    "streamlit>=1.28",
+    "pyvis>=0.3",
+    "jinja2>=3.1",
+    "structlog>=23.0",
+]
+
+[project.optional-dependencies]
+otel = ["opentelemetry-api>=1.20", "opentelemetry-sdk>=1.20", "opentelemetry-exporter-otlp>=1.20"]
+postgres = ["sqlalchemy>=2.0", "psycopg2-binary>=2.9"]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.1",
+]
+
+[project.scripts]
+multiagent-eval = "multiagent_eval.cli:app"
+
+[project.urls]
+Repository = "https://github.com/multiagent-eval/multiagent-eval"
+Documentation = "https://github.com/multiagent-eval/multiagent-eval#readme"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --cov=multiagent_eval --cov-report=term-missing --cov-fail-under=27"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]

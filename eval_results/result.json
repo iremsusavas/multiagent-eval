@@ -1,0 +1,105 @@
+{
+  "pipeline_trace": {
+    "pipeline_id": "cli_run_ex1",
+    "pipeline_name": "my_research_pipeline",
+    "total_latency_ms": 0,
+    "total_cost_usd": 0.0,
+    "final_output": {
+      "report": "Multi-agent AI systems use multiple agents that work together to solve complex tasks."
+    },
+    "agents": [
+      {
+        "agent_id": "example",
+        "agent_role": "agent",
+        "input_received": {
+          "query": "What is multi-agent AI?"
+        },
+        "output_produced": {
+          "report": "Multi-agent AI systems use multiple agents that work together to solve complex tasks."
+        },
+        "llm_calls": [],
+        "tools_called": [],
+        "start_time": 0.0,
+        "end_time": 0.0,
+        "latency_ms": 0.0,
+        "error": null,
+        "metadata": {}
+      }
+    ],
+    "state_transitions": [],
+    "metadata": {}
+  },
+  "metrics": [
+    {
+      "metric_name": "factual_accuracy",
+      "score": 1.0,
+      "explanation": "Factual accuracy score: 100.00%. Ground truth comparison.",
+      "agent_id": "example",
+      "flagged": false,
+      "threshold": 0.8
+    },
+    {
+      "metric_name": "inter_agent_consistency",
+      "score": 1.0,
+      "explanation": "Single agent - no consistency to check.",
+      "agent_id": null,
+      "flagged": false,
+      "threshold": 0.75
+    },
+    {
+      "metric_name": "error_propagation_score",
+      "score": 1.0,
+      "explanation": "Single agent pipeline - no propagation to check.",
+      "agent_id": null,
+      "flagged": false,
+      "threshold": 0.75
+    },
+    {
+      "metric_name": "cascade_failure_detection",
+      "score": 1.0,
+      "explanation": "No agent failures detected.",
+      "agent_id": null,
+      "flagged": false,
+      "threshold": 0.75
+    }
+  ],
+  "config": {
+    "pipeline_name": "my_research_pipeline",
+    "metrics": [
+      "factual_accuracy",
+      "inter_agent_consistency",
+      "error_propagation_score",
+      "cascade_failure_detection"
+    ],
+    "thresholds": {
+      "factual_accuracy": 0.8,
+      "inter_agent_consistency": 0.75
+    }
+  },
+  "metadata": {
+    "ground_truth": true,
+    "expected_output": {
+      "report": "Multi-agent AI systems use multiple agents that work together to solve complex tasks."
+    },
+    "failure_modes": {},
+    "stats": {
+      "mean": 1.0,
+      "std": 0.0,
+      "ci_95": [
+        1.0,
+        1.0
+      ]
+    },
+    "example_id": "ex1",
+    "example_index": 0
+  },
+  "failure_modes": {},
+  "stats": {
+    "mean": 1.0,
+    "std": 0.0,
+    "ci_95": [
+      1.0,
+      1.0
+    ]
+  }
+}

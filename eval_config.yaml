@@ -1,0 +1,26 @@
+pipeline:
+  name: "my_research_pipeline"
+  adapter: "langgraph"  # or crewai, autogen, custom
+
+evaluation:
+  golden_dataset: "datasets/research_qa.json"
+  metrics:
+    - factual_accuracy
+    - inter_agent_consistency
+    - error_propagation_score
+    - cascade_failure_detection
+  thresholds:
+    factual_accuracy: 0.8
+    inter_agent_consistency: 0.75
+
+judge:
+  # Free: Ollama (ollama run mistral) | Groq: groq/llama-3.1-70b-versatile
+  primary_model: "ollama/mistral"
+  fallback_model: "ollama/llama3.2"
+  bias_detection: true
+  cot_prompting: true
+
+reporting:
+  output_dir: "eval_results/"
+  formats: ["json", "html"]
+  dashboard: true

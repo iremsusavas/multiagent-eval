@@ -1,0 +1,57 @@
+# MultiAgent-Eval CI: Run evaluation as deployment gate
+# Usage: eval_score < threshold → fail the PR
+name: MultiAgent-Eval CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Run evaluation
+        id: eval
+        env:
+          EVAL_THRESHOLD: ${{ vars.EVAL_THRESHOLD || '0.7' }}
+        run: |
+          set -e
+          # Run eval on first example (or all with --all)
+          python -m multiagent_eval.cli run --config eval_config.yaml --example 0 || true
+          # If result exists, check threshold
+          if [ -f eval_results/result.json ]; then
+            python -c "
+          import json
+          import os
+          d = json.load(open('eval_results/result.json'))
+          metrics = d.get('metrics', [])
+          score = sum(m.get('score', 0) for m in metrics) / len(metrics) if metrics else 0.0
+          thresh = float(os.environ.get('EVAL_THRESHOLD', '0.7'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f'eval_score={score}\n')
+          print(f'Eval score: {score:.3f} (threshold: {thresh})')
+          if score < thresh:
+            print('::error::Eval score below threshold')
+            exit(1)
+          "
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: eval_results/

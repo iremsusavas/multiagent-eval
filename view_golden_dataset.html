@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golden Dataset Viewer</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 20px; background: #0f0f23; color: #e0e0e0; }
+        h1 { color: #4ecca3; }
+        h2 { color: #7b68ee; margin-top: 24px; }
+        .card { background: #1a1a3e; padding: 20px; border-radius: 12px; margin: 16px 0; border-left: 4px solid #4ecca3; }
+        .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
+        .flow-item { background: #16213e; padding: 16px; border-radius: 8px; min-width: 180px; text-align: center; }
+        .flow-arrow { font-size: 24px; color: #4ecca3; }
+        .json-block { background: #0d0d1a; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 13px; overflow-x: auto; }
+        .section { margin: 24px 0; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; margin: 2px; }
+        .badge-input { background: #2d5a87; }
+        .badge-output { background: #2d8756; }
+        .badge-agent { background: #5a2d87; }
+    </style>
+</head>
+<body>
+    <h1>Golden Dataset: research_qa.json</h1>
+    <p>Production-like dataset with 10 examples. Defines <strong>expected behavior</strong> for evaluation.</p>
+
+    <div class="section">
+        <h2>Dataset Overview</h2>
+        <div class="card">
+            <p><strong>10 examples</strong> | Difficulty: easy (4), medium (4), hard (2)</p>
+            <p>Categories: definition, comparison, technical, summarization, tools, production, evaluation</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Data Flow (Example: ex1)</h2>
+        <div class="flow">
+            <div class="flow-item">
+                <span class="badge badge-input">INPUT</span>
+                <p><strong>Query</strong></p>
+                <div class="json-block">{"query": "What is multi-agent AI?"}</div>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-item">
+                <span class="badge badge-agent">Agent: researcher</span>
+                <p><strong>Expected output</strong></p>
+                <div class="json-block">{"summary": "Multi-agent AI involves multiple AI agents collaborating."}</div>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-item">
+                <span class="badge badge-agent">Agent: writer</span>
+                <p><strong>Expected output</strong></p>
+                <div class="json-block">{"report": "Multi-agent AI systems use multiple agents that work together."}</div>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-item">
+                <span class="badge badge-output">FINAL OUTPUT</span>
+                <p><strong>Expected final answer</strong></p>
+                <div class="json-block">{"report": "Multi-agent AI systems use multiple agents that work together to solve complex tasks."}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>All Examples</h2>
+        <table style="width:100%; border-collapse: collapse;">
+            <tr style="background:#16213e"><th style="padding:8px">ID</th><th>Query</th><th>Difficulty</th><th>Category</th></tr>
+            <tr><td style="padding:8px">ex1</td><td>What is multi-agent AI?</td><td>easy</td><td>definition</td></tr>
+            <tr><td colspan="4" style="padding:4px;background:#0d0d1a"></td></tr>
+            <tr><td>ex2</td><td>Compare LangGraph vs CrewAI</td><td>medium</td><td>comparison</td></tr>
+            <tr><td>ex3</td><td>Failure modes in multi-agent systems</td><td>medium</td><td>technical</td></tr>
+            <tr><td>ex4</td><td>Benefits of agentic AI for enterprise</td><td>easy</td><td>summarization</td></tr>
+            <tr><td>ex5</td><td>RAG and agent systems</td><td>medium</td><td>technical</td></tr>
+            <tr><td>ex6</td><td>Single-LLM vs multi-agent evaluation</td><td>hard</td><td>definition</td></tr>
+            <tr><td>ex7</td><td>Tools for web search</td><td>easy</td><td>tools</td></tr>
+            <tr><td>ex8</td><td>Handling agent failures in production</td><td>hard</td><td>production</td></tr>
+            <tr><td>ex9</td><td>Chain-of-thought prompting</td><td>medium</td><td>technical</td></tr>
+            <tr><td>ex10</td><td>Challenges in evaluating multi-agent systems</td><td>hard</td><td>evaluation</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Example Structure (example_id: ex1)</h2>
+        <div class="card">
+            <p><strong>pipeline_input:</strong> Input given to the system (query)</p>
+            <p><strong>expected_outputs_per_agent:</strong> Expected output per agent</p>
+            <p><strong>final_expected_output:</strong> Expected answer at pipeline end</p>
+            <p><strong>tags:</strong> research, ai</p>
+            <p><strong>difficulty:</strong> medium</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>How Evaluation Uses This</h2>
+        <ol>
+            <li>Load an example from golden dataset (query + expected answer)</li>
+            <li>Build trace (real or simulated output)</li>
+            <li>Compare actual output vs expected → <strong>factual_accuracy</strong></li>
+            <li>For multi-agent: compare agent outputs → <strong>inter_agent_consistency</strong></li>
+        </ol>
+    </div>
+
+    <p><a href="eval_results/report.html" style="color:#4ecca3">→ View evaluation report</a></p>
+</body>
+</html>
