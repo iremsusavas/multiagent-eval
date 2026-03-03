@@ -49,6 +49,44 @@ def classify_failures(
     """
     failures: list[FailureInstance] = []
 
+    # Per-agent factual_accuracy scores
+    agent_fa_scores: dict[str, float] = {}
+    for m in metric_results:
+        if getattr(m, "metric_name", "") == "factual_accuracy" and getattr(m, "agent_id", None):
+            agent_fa_scores[m.agent_id] = getattr(m, "score", 0)
+
+    # Detect propagation: agent_i has very low score, corrupts agent_{i+1}
+    agents = pipeline_trace.agents
+    for i in range(len(agents) - 1):
+        aid = agents[i].agent_id
+        next_aid = agents[i + 1].agent_id
+        score_i = agent_fa_scores.get(aid, 1.0)
+        score_next = agent_fa_scores.get(next_aid, 1.0)
+        if score_i < 0.2 and score_next < 0.5:
+            failures.append(
+                FailureInstance(
+                    failure_mode=FailureMode.PROPAGATION,
+                    agent_id=aid,
+                    explanation=f"Agent {aid} produced incorrect output (score {score_i:.2f}), "
+                    f"corrupting downstream agent {next_aid}.",
+                    score=score_i,
+                    raw_data={"source": aid, "target": next_aid},
+                )
+            )
+
+    # Cascade: 2+ consecutive agent failures
+    failed_agents = [a.agent_id for a in agents if agent_fa_scores.get(a.agent_id, 1.0) < 0.3]
+    if len(failed_agents) >= 2:
+        failures.append(
+            FailureInstance(
+                failure_mode=FailureMode.CASCADE,
+                agent_id=failed_agents[0],
+                explanation=f"Cascade: {len(failed_agents)} agents failed in sequence.",
+                score=0.0,
+                raw_data={"failed_agents": failed_agents},
+            )
+        )
+
     for m in metric_results:
         if not getattr(m, "flagged", False):
             continue
@@ -58,7 +96,7 @@ def classify_failures(
         explanation = getattr(m, "explanation", "")
 
         mode = FailureMode.UNKNOWN
-        if "error_propagation" in name or "propagation" in name:
+        if "error_propagation" in name or ("propagation" in name and "factual" not in name):
             mode = FailureMode.PROPAGATION
         elif "hallucination" in name:
             mode = FailureMode.HALLUCINATION
@@ -99,6 +137,39 @@ def classify_failures(
             )
 
     return failures
+
+
+def failure_modes_display(failures: list[FailureInstance]) -> list[str]:
+    """
+    Return human-readable failure mode strings for display.
+
+    Example: ["PROPAGATION_ERROR (agent_002 → agent_003)", "CASCADE_FAILURE"]
+    Prioritizes PROPAGATION and CASCADE; skips UNKNOWN when specific modes exist.
+    """
+    has_specific = any(
+        f.failure_mode in (FailureMode.PROPAGATION, FailureMode.CASCADE)
+        for f in failures
+    )
+    seen: set[str] = set()
+    out: list[str] = []
+    for f in failures:
+        if has_specific and f.failure_mode == FailureMode.UNKNOWN:
+            continue
+        if f.failure_mode == FailureMode.PROPAGATION:
+            target = f.raw_data.get("target", "?")
+            key = f"PROPAGATION_ERROR ({f.agent_id} → {target})"
+        elif f.failure_mode == FailureMode.CASCADE:
+            key = "CASCADE_FAILURE"
+        elif f.failure_mode == FailureMode.HALLUCINATION:
+            key = f"HALLUCINATION ({f.agent_id})"
+        elif f.failure_mode == FailureMode.CONSISTENCY_DRIFT:
+            key = "CONSISTENCY_DRIFT"
+        else:
+            key = f"{f.failure_mode.value.upper()} ({f.agent_id or 'pipeline'})"
+        if key not in seen:
+            seen.add(key)
+            out.append(key)
+    return out
 
 
 def failure_mode_summary(failures: list[FailureInstance]) -> dict[str, int]:
