@@ -39,6 +39,19 @@ class MetricResult:
 # --- Per-agent metrics ---
 
 
+def _extract_text_from_output(output: dict[str, Any]) -> str:
+    """Extract concatenated text from agent output dict."""
+    if not isinstance(output, dict):
+        return str(output)
+    parts = []
+    for v in output.values():
+        if isinstance(v, str):
+            parts.append(v)
+        elif isinstance(v, (list, dict)):
+            parts.append(str(v))
+    return " ".join(parts).lower()
+
+
 def factual_accuracy(
     agent_trace: AgentTrace,
     ground_truth: dict[str, Any],
@@ -48,17 +61,31 @@ def factual_accuracy(
     """
     Evaluate factual accuracy of agent output against ground truth.
 
-    Uses LLM-as-Judge if judge_fn provided, else simple string matching.
+    Uses LLM-as-Judge if judge_fn provided.
+    If ground_truth has "expected_keywords", uses keyword overlap (found/total).
+    Otherwise falls back to simple string overlap.
     """
-    output_str = str(agent_trace.output_produced)
-    gt_str = str(ground_truth)
+    output = agent_trace.output_produced
+    output_text = _extract_text_from_output(output)
 
     if judge_fn:
-        score = judge_fn(output_str, gt_str)
+        score = judge_fn(output_text, str(ground_truth))
+    elif "expected_keywords" in ground_truth:
+        # Keyword-based: score = (keywords found in output) / (total keywords)
+        keywords = ground_truth["expected_keywords"]
+        if isinstance(keywords, str):
+            keywords = [w.strip() for w in keywords.split(",")]
+        keywords = [k.lower() for k in keywords if k]
+        if not keywords:
+            score = 1.0
+        else:
+            found = sum(1 for kw in keywords if kw in output_text)
+            score = found / len(keywords)
     else:
-        # Fallback: simple overlap-based heuristic
-        output_words = set(output_str.lower().split())
-        gt_words = set(gt_str.lower().split())
+        # Fallback: simple word overlap
+        output_words = set(output_text.split())
+        gt_str = str(ground_truth).lower()
+        gt_words = set(gt_str.split())
         if not gt_words:
             score = 1.0
         else:
