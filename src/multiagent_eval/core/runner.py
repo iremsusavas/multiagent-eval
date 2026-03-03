@@ -55,6 +55,24 @@ class EvalResult:
             return 0.0
         return sum(m.score for m in self.metrics) / len(self.metrics)
 
+    @property
+    def agent_scores(self) -> dict[str, float]:
+        """Per-agent average scores (agent_id -> score)."""
+        by_agent: dict[str, list[float]] = {}
+        for m in self.metrics:
+            if m.agent_id:
+                by_agent.setdefault(m.agent_id, []).append(m.score)
+        return {aid: sum(s) / len(s) for aid, s in by_agent.items()}
+
+    @property
+    def failure_modes(self) -> list[str]:
+        """List of detected failure modes for display (e.g. 'PROPAGATION_ERROR (agent_002 → agent_003)')."""
+        display = self.metadata.get("failure_modes_display", [])
+        if display:
+            return display
+        fm = self.metadata.get("failure_modes", {})
+        return [f"{mode} ({count}x)" for mode, count in fm.items() if count]
+
     def passed(self, thresholds: Optional[dict[str, float]] = None) -> bool:
         """Check if evaluation passed all thresholds."""
         thresh = thresholds or (self.config.thresholds if self.config else {})
@@ -263,9 +281,14 @@ class EvaluationRunner:
 
         # Failure mode taxonomy
         try:
-            from multiagent_eval.failure_modes import classify_failures, failure_mode_summary
+            from multiagent_eval.failure_modes import (
+                classify_failures,
+                failure_mode_summary,
+                failure_modes_display,
+            )
             failures = classify_failures(pipeline_trace, results)
             meta["failure_modes"] = failure_mode_summary(failures)
+            meta["failure_modes_display"] = failure_modes_display(failures)
         except Exception:
             pass
 
