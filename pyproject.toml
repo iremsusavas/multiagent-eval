@@ -12,7 +12,7 @@ requires-python = ">=3.11"
 authors = [
     {name = "MultiAgent-Eval Contributors"}
 ]
-keywords = ["multi-agent", "evaluation", "llm", "ai", "langgraph", "crewai", "autogen"]
+keywords = ["multi-agent", "llm-evaluation", "agent-tracing", "langgraph", "crewai"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -52,6 +52,7 @@ dev = [
 multiagent-eval = "multiagent_eval.cli:app"
 
 [project.urls]
+Homepage = "https://github.com/multiagent-eval/multiagent-eval"
 Repository = "https://github.com/multiagent-eval/multiagent-eval"
 Documentation = "https://github.com/multiagent-eval/multiagent-eval#readme"
 
