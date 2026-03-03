@@ -9,6 +9,10 @@ with no trace of origin.
 
 **multiagent-eval finds where the fault began.**
 
+<p align="center">
+  <img src="assets/demo.png" alt="3-agent pipeline demo" width="700">
+</p>
+
 ---
 
 ## The Problem Nobody Is Solving
