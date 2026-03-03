@@ -31,6 +31,7 @@ class JudgeConfig(BaseModel):
 
     primary_model: str = "gpt-4o"
     fallback_model: str = "claude-sonnet-4-6"
+    api_base: Optional[str] = None  # e.g. http://localhost:11434 for Ollama
     bias_detection: bool = True
     cot_prompting: bool = True
 

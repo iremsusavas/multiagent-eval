@@ -46,6 +46,23 @@ pip install -e .
 python examples/quickstart_mock.py
 ```
 
+> **LLM-based evaluation** requires a running LLM. Supports OpenAI,
+> Anthropic, or **local models via Ollama** (no API key needed):
+>
+> ```bash
+> ollama pull llama3.2
+> ```
+> Then in `eval_config.yaml`:
+> ```yaml
+> judge:
+>   primary_model: "ollama/llama3.2"
+>   api_base: "http://localhost:11434"
+> ```
+> For a fully zero-dependency demo (no LLM needed):
+> ```bash
+> python examples/quickstart_mock.py
+> ```
+
 ---
 
 ## What Makes This Different
