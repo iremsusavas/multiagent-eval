@@ -38,13 +38,19 @@ That's the gap multiagent-eval closes.
 ## Quickstart
 
 ```bash
-git clone https://github.com/iremsusavas/multiagent-eval.git
-cd multiagent-eval
-pip install -e .
+pip install multiagent-eval
 
 # Zero-dependency demo — no API key needed
 python examples/quickstart_mock.py
 ```
+
+> **From source** (development):
+> ```bash
+> git clone https://github.com/iremsusavas/multiagent-eval.git
+> cd multiagent-eval
+> pip install -e .
+> python examples/quickstart_mock.py
+> ```
 
 > **LLM-based evaluation** requires a running LLM. Supports OpenAI,
 > Anthropic, or **local models via Ollama** (no API key needed):
