@@ -1,6 +1,6 @@
 # multiagent-eval
 
-> for multi-agent AI systems.
+> Propagation-aware evaluation for multi-agent AI systems.
 
 Single-LLM eval tools (RAGAS, DeepEval) miss what actually
 breaks in production: errors that start in Agent 1, silently

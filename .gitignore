@@ -9,3 +9,9 @@ build/
 htmlcov/
 .pytest_cache/
 *.log
+
+# Evaluation outputs (generated at runtime)
+eval_results/
+
+# Archive artifacts
+*.tar.gz

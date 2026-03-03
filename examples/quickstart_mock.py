@@ -1,16 +1,17 @@
 """
 quickstart_mock.py
 
-multiagent-eval'ın ne yaptığını görmek için en hızlı yol.
-Hiçbir API key veya harici bağımlılık gerektirmez.
+The fastest way to see multiagent-eval in action.
+No API key or external dependencies required.
 
-Senaryo: 3 agent'lı bir araştırma pipeline'ı.
-  Agent 1 (Researcher): Bir konu hakkında bilgi toplar
-  Agent 2 (Analyst):    Toplanan bilgiyi analiz eder  ← burada hata enjekte edeceğiz
-  Agent 3 (Writer):     Rapor yazar
+Scenario: 3-agent research pipeline.
+  Agent 1 (Researcher): Gathers information on a topic
+  Agent 2 (Analyst):    Analyzes the findings          <- we inject a fault here
+  Agent 3 (Writer):     Writes the final report
 
-multiagent-eval'ın propagation detection'ı Agent 2'deki bozulmayı
-Agent 3'ün outputuna bakarak değil, Agent 2'nin outputunu inceleyerek yakalar.
+multiagent-eval's propagation detection identifies Agent 2 as the fault origin
+by measuring semantic drift between each agent's input and output — not just
+by checking the final output score.
 """
 
 import time
@@ -19,7 +20,7 @@ from multiagent_eval import evaluate
 
 
 def build_healthy_pipeline() -> PipelineTrace:
-    """3 agent'ın sorunsuz çalıştığı örnek trace."""
+    """3-agent pipeline where all agents stay on topic."""
 
     t0 = time.time()
     researcher_trace = AgentTrace(
@@ -108,7 +109,7 @@ def build_healthy_pipeline() -> PipelineTrace:
         metadata={},
     )
 
-    pt = PipelineTrace(
+    return PipelineTrace(
         pipeline_id="demo_healthy_001",
         pipeline_name="inflation_research_pipeline",
         total_latency_ms=3580,
@@ -117,14 +118,15 @@ def build_healthy_pipeline() -> PipelineTrace:
         agents=[researcher_trace, analyst_trace, writer_trace],
         state_transitions=[],
     )
-    return pt
 
 
 def build_corrupted_pipeline() -> PipelineTrace:
-    """Agent 2'nin bozulmuş output ürettiği örnek trace.
+    """Pipeline where Agent 2 produces a semantically unrelated output.
 
-    Agent 2, inflation araştırmasını alıyor ama tamamen alakasız
-    bir konu hakkında çıktı üretiyor. Propagation Judge bunu yakalamalı.
+    Agent 2 receives inflation research but produces output about climate change —
+    a classic cascading hallucination pattern. The Propagation Judge detects
+    the topic drift at Agent 2 (low input→output semantic similarity) rather
+    than blaming Agent 3, which merely forwarded corrupted content.
     """
 
     t0 = time.time()
@@ -155,9 +157,8 @@ def build_corrupted_pipeline() -> PipelineTrace:
         metadata={},
     )
 
-    # ← BURADA HATA: Agent 2 inflation bilgisini almış ama
-    # iklim değişikliği hakkında output üretiyor.
-    # Bu klasik bir cascading hallucination başlangıcı.
+    # FAULT ORIGIN: Agent 2 received inflation research but produced
+    # climate change content — a topic switch that corrupts all downstream agents.
     analyst_trace = AgentTrace(
         agent_id="agent_002",
         agent_role="analyst",
@@ -170,7 +171,7 @@ def build_corrupted_pipeline() -> PipelineTrace:
         llm_calls=[
             LLMCall(
                 prompt="Analyze these inflation findings: ...",
-                response="Climate change is accelerating...",  # ← hallucination
+                response="Climate change is accelerating...",  # hallucination: wrong topic
                 model="gpt-4o",
                 tokens_input=350,
                 tokens_output=30,
@@ -186,8 +187,8 @@ def build_corrupted_pipeline() -> PipelineTrace:
         metadata={},
     )
 
-    # Agent 3 bozulmuş inputu alıyor, makul görünen ama yanlış bir rapor yazıyor
-    # (Header'da "Inflation" yok — tamamen konu dışı)
+    # Agent 3 receives corrupted input and produces a plausible-looking but
+    # completely off-topic report. It is a victim, not the fault origin.
     writer_trace = AgentTrace(
         agent_id="agent_003",
         agent_role="writer",
@@ -196,12 +197,11 @@ def build_corrupted_pipeline() -> PipelineTrace:
             "report": "## Climate Report\n\n"
             "Renewable energy is the key to addressing current economic challenges. "
             "Carbon emission reductions will stabilize prices long-term."
-            # ← Rapor inflation sorusuna cevap vermek yerine iklimden bahsediyor
         },
         llm_calls=[
             LLMCall(
                 prompt="Write a report based on this analysis: ...",
-                response="## Inflation Analysis Report...",
+                response="## Climate Report...",
                 model="gpt-4o",
                 tokens_input=400,
                 tokens_output=120,
@@ -217,7 +217,7 @@ def build_corrupted_pipeline() -> PipelineTrace:
         metadata={},
     )
 
-    pt = PipelineTrace(
+    return PipelineTrace(
         pipeline_id="demo_corrupted_001",
         pipeline_name="inflation_research_pipeline",
         total_latency_ms=3580,
@@ -226,7 +226,6 @@ def build_corrupted_pipeline() -> PipelineTrace:
         agents=[researcher_trace, analyst_trace, writer_trace],
         state_transitions=[],
     )
-    return pt
 
 
 def print_result(label: str, result) -> None:
@@ -239,8 +238,7 @@ def print_result(label: str, result) -> None:
     agent_ids = list(result.agent_scores.keys())
     last_agent = agent_ids[-1] if agent_ids else None
     for agent_id, score in result.agent_scores.items():
-        # Only mark fault origin: agent with 0.0 that is NOT the last (victim)
-        marker = "  ← fault origin" if score == 0.0 and agent_id != last_agent else ""
+        marker = "  <- fault origin" if score == 0.0 and agent_id != last_agent else ""
         print(f"    {agent_id}: {score:.2f}{marker}")
     print(f"\n  Failure Modes:")
     if result.failure_modes:
@@ -248,15 +246,12 @@ def print_result(label: str, result) -> None:
             print(f"    ⚠  {fm}")
     else:
         print(f"    ✓  None detected")
-    if hasattr(result, "propagation_graph") and result.propagation_graph:
-        print(f"\n  Propagation Graph Edges:")
-        for edge in result.propagation_graph.edges:
-            print(f"    {edge.source} → {edge.target}  fidelity={edge.fidelity_score:.2f}")
     print()
 
 
 if __name__ == "__main__":
-    # Keyword-based ground truth: all 3 agents' healthy output contains these
+    # Ground truth: keywords expected in a correct inflation research report.
+    # All 3 agents in the healthy pipeline produce output containing these terms.
     ground_truth = {
         "expected_topic": "inflation",
         "expected_keywords": [
@@ -272,15 +267,15 @@ if __name__ == "__main__":
     }
 
     print("\nmultiagent-eval quickstart demo")
-    print("Scenario: 3-agent research pipeline (Researcher → Analyst → Writer)")
+    print("Scenario: 3-agent research pipeline (Researcher -> Analyst -> Writer)")
 
     print("\n[1/2] Running evaluation on HEALTHY pipeline...")
     healthy_trace = build_healthy_pipeline()
     healthy_result = evaluate(
         pipeline=healthy_trace,
         ground_truth=ground_truth,
-        metrics=["factual_accuracy"],
-        thresholds={"factual_accuracy": 0.75},
+        metrics=["factual_accuracy", "error_propagation_score"],
+        thresholds={"factual_accuracy": 0.75, "error_propagation_score": 0.5},
     )
     print_result("HEALTHY PIPELINE", healthy_result)
 
@@ -290,13 +285,14 @@ if __name__ == "__main__":
     corrupted_result = evaluate(
         pipeline=corrupted_trace,
         ground_truth=ground_truth,
-        metrics=["factual_accuracy"],
-        thresholds={"factual_accuracy": 0.75},
+        metrics=["factual_accuracy", "error_propagation_score"],
+        thresholds={"factual_accuracy": 0.75, "error_propagation_score": 0.5},
     )
     print_result("CORRUPTED PIPELINE", corrupted_result)
 
     print("Key insight:")
-    print("  Standard eval sees final output → might miss the fault origin.")
-    print("  multiagent-eval's Propagation Judge traces the fault to agent_002,")
-    print("  not agent_003 which merely propagated the corrupted input.")
+    print("  Standard eval checks only the final output — it might miss where the fault began.")
+    print("  multiagent-eval's error_propagation_score measures semantic drift at each agent,")
+    print("  pinpointing agent_002 as the corruption origin (its output is unrelated to its input),")
+    print("  rather than blaming agent_003 which merely propagated the corrupted content.")
     print()

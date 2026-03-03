@@ -30,7 +30,7 @@ def main() -> None:
 
     print("\n=== Done ===")
     print("Results: eval_results/result.json")
-    print("Rapor: eval_results/report.html")
+    print("Report: eval_results/report.html")
 
 
 if __name__ == "__main__":

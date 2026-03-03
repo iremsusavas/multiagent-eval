@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 from multiagent_eval.core.trace import AgentTrace, PipelineTrace
 from multiagent_eval.core.llm_gateway import LLMGateway
+from multiagent_eval.core.metrics import _tfidf_cosine
 
 logger = logging.getLogger(__name__)
 
@@ -117,11 +118,10 @@ class PropagationJudge:
         )
 
     def _similarity(self, a: str, b: str) -> float:
-        """Compute semantic similarity."""
+        """Compute semantic similarity. Uses TF-IDF cosine by default (matches error_propagation_score)."""
         if self.similarity_fn:
             return self.similarity_fn(a, b)
-        sa, sb = set(a.lower().split()), set(b.lower().split())
-        return len(sa & sb) / len(sa | sb) if (sa or sb) else 1.0
+        return _tfidf_cosine(a, b)
 
     def _llm_verdict(self, prev_out: str, curr_in: str) -> tuple[str, bool]:
         """Use LLM to determine if divergence is legitimate or error propagation."""

@@ -143,8 +143,11 @@ def failure_modes_display(failures: list[FailureInstance]) -> list[str]:
     """
     Return human-readable failure mode strings for display.
 
-    Example: ["PROPAGATION_ERROR (agent_002 → agent_003)", "CASCADE_FAILURE"]
+    Example: ["PROPAGATION_ERROR (agent_002 -> agent_003)", "CASCADE_FAILURE"]
+
     Prioritizes PROPAGATION and CASCADE; skips UNKNOWN when specific modes exist.
+    Only shows PROPAGATION_ERROR when a specific agent pair is identified.
+    Metric-level propagation flags (no specific agent) show as LOW_PROPAGATION_SCORE.
     """
     has_specific = any(
         f.failure_mode in (FailureMode.PROPAGATION, FailureMode.CASCADE)
@@ -156,8 +159,16 @@ def failure_modes_display(failures: list[FailureInstance]) -> list[str]:
         if has_specific and f.failure_mode == FailureMode.UNKNOWN:
             continue
         if f.failure_mode == FailureMode.PROPAGATION:
-            target = f.raw_data.get("target", "?")
-            key = f"PROPAGATION_ERROR ({f.agent_id} → {target})"
+            source = f.agent_id
+            target = f.raw_data.get("target")
+            if source and target:
+                # Specific agent-to-agent attribution
+                key = f"PROPAGATION_ERROR ({source} -> {target})"
+            elif f.raw_data.get("metric_name"):
+                # Metric-level flag with no specific pair — score warning only
+                key = "LOW_PROPAGATION_SCORE"
+            else:
+                continue  # Skip unattributed propagation flags
         elif f.failure_mode == FailureMode.CASCADE:
             key = "CASCADE_FAILURE"
         elif f.failure_mode == FailureMode.HALLUCINATION:

@@ -1,8 +1,8 @@
 """
 LangGraph adapter: automatically captures traces from compiled LangGraph graphs.
 
-Monkey-patches node execution to inject trace capture. Extracts agent_id from
-node names, captures inputs/outputs at each node boundary.
+Captures per-node inputs/outputs via graph.stream() inspection, and captures
+per-LLM-call details (tokens, model name) via LangChain's BaseCallbackHandler.
 """
 
 from __future__ import annotations
@@ -12,10 +12,91 @@ import time
 import uuid
 from typing import Any, Optional
 
-from multiagent_eval.core.trace import AgentTrace, LLMCall, PipelineTrace, ToolCall
+from multiagent_eval.core.trace import AgentTrace, PipelineTrace
 from multiagent_eval.integrations.base_adapter import BaseAdapter
 
 logger = logging.getLogger(__name__)
+
+
+def _make_callback_handler(traces: list[AgentTrace]) -> Any:
+    """
+    Build a LangChain BaseCallbackHandler that captures LLM and tool events.
+
+    Imports BaseCallbackHandler lazily so that multiagent-eval itself does not
+    hard-depend on langchain-core at import time. If langchain-core is not
+    installed, the adapter still works — node-level traces are captured via
+    stream() inspection; only the per-LLM-call detail is skipped.
+    """
+    try:
+        from langchain_core.callbacks import BaseCallbackHandler  # type: ignore[import-untyped]
+    except ImportError:
+        try:
+            from langchain.callbacks.base import BaseCallbackHandler  # type: ignore[import-untyped]
+        except ImportError:
+            logger.debug(
+                "langchain-core not installed; per-LLM-call capture skipped. "
+                "Install langchain-core>=0.1 for full call-level tracing."
+            )
+            return _NoOpHandler(traces)
+
+    class _LangGraphTraceHandler(BaseCallbackHandler):
+        """Callback handler that captures LLM and tool calls per LangGraph node."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self._traces = traces
+
+        def on_llm_end(self, response: Any, **kwargs: Any) -> None:  # type: ignore[override]
+            if not self._traces:
+                return
+            agent = self._traces[-1]
+            try:
+                generations = getattr(response, "generations", [[]])
+                llm_output = getattr(response, "llm_output", {}) or {}
+                usage = llm_output.get("token_usage", {})
+                for gen_list in generations:
+                    for g in gen_list:
+                        text = getattr(g, "text", str(g))
+                        info = getattr(g, "generation_info", {}) or {}
+                        model_name = (
+                            info.get("model_name")
+                            or llm_output.get("model_name")
+                            or kwargs.get("invocation_params", {}).get("model_name", "unknown")
+                        )
+                        agent.add_llm_call(
+                            prompt="",
+                            response=text,
+                            model=model_name,
+                            tokens_input=usage.get("prompt_tokens", 0),
+                            tokens_output=usage.get("completion_tokens", 0),
+                            cost_usd=0.0,
+                            latency_ms=0.0,
+                        )
+            except Exception:
+                logger.debug("on_llm_end capture failed", exc_info=True)
+
+        def on_tool_end(self, output: str, **kwargs: Any) -> None:  # type: ignore[override]
+            if not self._traces:
+                return
+            agent = self._traces[-1]
+            try:
+                agent.add_tool_call(
+                    tool_name=kwargs.get("name", "tool"),
+                    input_data=kwargs.get("inputs") or kwargs.get("input", {}),
+                    output_data=output,
+                    latency_ms=0.0,
+                )
+            except Exception:
+                logger.debug("on_tool_end capture failed", exc_info=True)
+
+    return _LangGraphTraceHandler()
+
+
+class _NoOpHandler:
+    """Stub used when langchain-core is not installed."""
+
+    def __init__(self, traces: list[AgentTrace]) -> None:
+        self._traces = traces
 
 
 class LangGraphAdapter(BaseAdapter):
@@ -23,7 +104,12 @@ class LangGraphAdapter(BaseAdapter):
     Adapter for LangGraph compiled graphs.
 
     Wraps graph invocation and captures traces via LangChain callback integration
-    and state inspection. Requires langgraph and langchain packages.
+    and state inspection. Requires langgraph; for LLM-call-level detail also
+    requires langchain-core>=0.1.
+
+    Node-level input/output traces are always captured via stream() inspection.
+    LLM call details (tokens, model name) are captured via BaseCallbackHandler,
+    which requires langchain-core to be installed alongside langgraph.
     """
 
     def __init__(
@@ -44,17 +130,18 @@ class LangGraphAdapter(BaseAdapter):
 
     def run_and_trace(self, input_data: dict[str, Any], **kwargs: Any) -> PipelineTrace:
         """
-        Run the LangGraph and capture trace.
+        Run the LangGraph and capture a full execution trace.
 
-        Uses graph.stream() or graph.invoke() and inspects state updates
-        to build agent traces. Falls back to minimal trace if structure differs.
+        Uses graph.stream() to inspect state updates at each node boundary.
+        LLM and tool call details are captured via the BaseCallbackHandler.
+        Falls back gracefully if graph structure or callbacks differ.
         """
         start = time.time()
         self._traces = []
 
+        # Try to get node metadata for role names
         try:
-            # Try to get graph structure
-            nodes = getattr(self.graph, "nodes", {}) or getattr(self.graph, "get_graph", lambda: None)()
+            nodes: Any = getattr(self.graph, "nodes", {})
             if callable(nodes):
                 try:
                     g = nodes()
@@ -64,21 +151,22 @@ class LangGraphAdapter(BaseAdapter):
         except Exception:
             nodes = {}
 
-        config = kwargs.get("config", {})
-        config["callbacks"] = config.get("callbacks", [])
-        # Add our callback handler for LLM/tool capture
-        handler = _LangGraphTraceHandler(self._traces)
-        config["callbacks"].append(handler)
+        # Merge our callback handler into the run config
+        config: dict[str, Any] = dict(kwargs.get("config", {}))
+        existing_callbacks = list(config.get("callbacks", []))
+        handler = _make_callback_handler(self._traces)
+        config["callbacks"] = existing_callbacks + [handler]
 
+        output: Any = None
         try:
             if hasattr(self.graph, "stream"):
-                final = None
                 for event in self.graph.stream(input_data, config=config):
-                    for node_name, state in (event.items() if isinstance(event, dict) else [(str(event), event)]):
+                    for node_name, state in (
+                        event.items() if isinstance(event, dict) else [(str(event), event)]
+                    ):
                         if isinstance(state, dict):
                             self._capture_node(node_name, state, nodes)
-                    final = state if isinstance(event, dict) else event
-                output = final
+                    output = state if isinstance(event, dict) else event
             elif hasattr(self.graph, "invoke"):
                 output = self.graph.invoke(input_data, config=config)
                 if hasattr(output, "keys"):
@@ -87,17 +175,17 @@ class LangGraphAdapter(BaseAdapter):
                 else:
                     self._capture_node("node", {"output": output}, nodes)
             else:
-                output = {"error": "Graph has no stream or invoke"}
-        except Exception as e:
-            logger.exception("LangGraph execution failed: %s", e)
-            output = {"error": str(e)}
+                output = {"error": "Graph has no stream or invoke method"}
+        except Exception as exc:
+            logger.exception("LangGraph execution failed: %s", exc)
+            output = {"error": str(exc)}
             if self._traces:
-                self._traces[-1].error = str(e)
+                self._traces[-1].error = str(exc)
 
         latency_ms = (time.time() - start) * 1000
         total_cost = sum(t.total_cost_usd() for t in self._traces)
 
-        trace = PipelineTrace(
+        return PipelineTrace(
             pipeline_id=str(uuid.uuid4())[:8],
             pipeline_name=self.pipeline_name,
             total_latency_ms=int(latency_ms),
@@ -106,72 +194,28 @@ class LangGraphAdapter(BaseAdapter):
             agents=self._traces,
             metadata={"adapter": "langgraph"},
         )
-        return trace
 
-    def _capture_node(self, node_name: str, state: dict, nodes: dict) -> None:
+    def _capture_node(self, node_name: str, state: dict[str, Any], nodes: Any) -> None:
         """Create or update agent trace for a node."""
-        agent_id = node_name
-        role = nodes.get(node_name, {}).get("metadata", {}).get("role", node_name) if isinstance(nodes.get(node_name), dict) else node_name
-
-        existing = next((t for t in self._traces if t.agent_id == agent_id), None)
+        role = (
+            nodes.get(node_name, {}).get("metadata", {}).get("role", node_name)
+            if isinstance(nodes.get(node_name), dict)
+            else node_name
+        )
+        existing = next((t for t in self._traces if t.agent_id == node_name), None)
         if existing:
             existing.output_produced = state
             existing.end_time = time.time()
             existing.latency_ms = (existing.end_time - existing.start_time) * 1000
         else:
-            trace = AgentTrace(
-                agent_id=agent_id,
-                agent_role=str(role),
-                input_received=state.get("messages", state) if isinstance(state, dict) else {},
-                output_produced=state,
-                start_time=time.time(),
-                end_time=time.time(),
-                metadata={"node": node_name},
+            self._traces.append(
+                AgentTrace(
+                    agent_id=node_name,
+                    agent_role=str(role),
+                    input_received=state.get("messages", state) if isinstance(state, dict) else {},
+                    output_produced=state,
+                    start_time=time.time(),
+                    end_time=time.time(),
+                    metadata={"node": node_name},
+                )
             )
-            self._traces.append(trace)
-
-
-class _LangGraphTraceHandler:
-    """Callback handler to capture LLM and tool calls from LangChain."""
-
-    def __init__(self, traces: list[AgentTrace]) -> None:
-        self.traces = traces
-        self._current_agent: Optional[AgentTrace] = None
-
-    def on_llm_end(self, response: Any, **kwargs: Any) -> None:
-        """Capture LLM completion."""
-        if not self.traces:
-            return
-        agent = self.traces[-1]
-        try:
-            generations = getattr(response, "generations", [[]])
-            for gen_list in generations:
-                for g in gen_list:
-                    text = getattr(g, "text", str(g))
-                    info = getattr(g, "generation_info", {}) or {}
-                    agent.add_llm_call(
-                        prompt="",
-                        response=text,
-                        model=info.get("model_name", "unknown"),
-                        tokens_input=info.get("input_tokens", 0),
-                        tokens_output=info.get("output_tokens", 0),
-                        cost_usd=0,
-                        latency_ms=0,
-                    )
-        except Exception:
-            pass
-
-    def on_tool_end(self, output: str, **kwargs: Any) -> None:
-        """Capture tool call."""
-        if not self.traces:
-            return
-        agent = self.traces[-1]
-        try:
-            agent.add_tool_call(
-                tool_name=kwargs.get("name", "tool"),
-                input_data=kwargs.get("input", {}),
-                output_data=output,
-                latency_ms=0,
-            )
-        except Exception:
-            pass

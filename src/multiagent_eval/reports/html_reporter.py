@@ -255,6 +255,6 @@ class HTMLReporter:
             document.getElementById('propagation-graph').innerHTML = '<p style="padding:20px;color:#888">Single agent or no graph data.</p>';
         }}
     </script>
-    <p style="margin-top:30px;color:#666"><a href="../view_golden_dataset.html" style="color:#4ecca3">→ View golden dataset</a></p>
+    <p style="margin-top:30px;color:#666"><a href="../docs/view_golden_dataset.html" style="color:#4ecca3">→ View golden dataset</a></p>
 </body>
 </html>"""

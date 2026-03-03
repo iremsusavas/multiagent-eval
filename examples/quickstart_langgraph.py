@@ -1,12 +1,12 @@
 """
 quickstart_langgraph.py
 
-Gerçek bir LangGraph pipeline'ını multiagent-eval ile değerlendirme.
+Evaluate a real LangGraph pipeline with multiagent-eval.
 
-Kurulum:
-    pip install multiagent-eval langgraph openai
+Setup:
+    pip install -e . langgraph openai
 
-Çalıştırma:
+Run:
     export OPENAI_API_KEY=sk-...
     python examples/quickstart_langgraph.py
 """
@@ -20,7 +20,7 @@ from multiagent_eval.integrations import LangGraphAdapter
 from multiagent_eval import evaluate
 
 
-# ── 1. LangGraph State tanımı ──────────────────────────────────────────
+# ── 1. LangGraph State definition ────────────────────────────────────────
 
 class ResearchState(TypedDict):
     query: str
@@ -30,10 +30,10 @@ class ResearchState(TypedDict):
     messages: Annotated[list, operator.add]
 
 
-# ── 2. Agent node fonksiyonları ────────────────────────────────────────
+# ── 2. Agent node functions ──────────────────────────────────────────────
 
 def researcher_node(state: ResearchState) -> ResearchState:
-    """Agent 1: Araştırma yapar."""
+    """Agent 1: Performs research."""
     from openai import OpenAI
     client = OpenAI()
 
@@ -50,7 +50,7 @@ def researcher_node(state: ResearchState) -> ResearchState:
 
 
 def analyst_node(state: ResearchState) -> ResearchState:
-    """Agent 2: Araştırma bulgularını analiz eder."""
+    """Agent 2: Analyzes research findings."""
     from openai import OpenAI
     client = OpenAI()
 
@@ -67,7 +67,7 @@ def analyst_node(state: ResearchState) -> ResearchState:
 
 
 def writer_node(state: ResearchState) -> ResearchState:
-    """Agent 3: Rapor yazar."""
+    """Agent 3: Writes the report."""
     from openai import OpenAI
     client = OpenAI()
 
@@ -83,7 +83,7 @@ def writer_node(state: ResearchState) -> ResearchState:
     return {**state, "final_report": report}
 
 
-# ── 3. Graph oluştur ───────────────────────────────────────────────────
+# ── 3. Build graph ──────────────────────────────────────────────────────
 
 def build_graph():
     graph = StateGraph(ResearchState)
@@ -97,7 +97,7 @@ def build_graph():
     return graph.compile()
 
 
-# ── 4. Evaluate ───────────────────────────────────────────────────────
+# ── 4. Evaluate ──────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     if not os.getenv("OPENAI_API_KEY"):
@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
     graph = build_graph()
 
-    # LangGraphAdapter pipeline'ı wrap eder ve trace'i otomatik yakalar
+    # LangGraphAdapter wraps the pipeline and captures traces automatically
     adapter = LangGraphAdapter(
         graph=graph,
         pipeline_name="research_pipeline",

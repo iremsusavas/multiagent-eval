@@ -3,7 +3,10 @@
 ## Quickstart (no API key needed)
 
 ```bash
-pip install multiagent-eval
+git clone https://github.com/iremsusavas/multiagent-eval.git
+cd multiagent-eval
+pip install -e .
+
 python examples/quickstart_mock.py
 ```
 
@@ -30,7 +33,7 @@ CORRUPTED PIPELINE (Agent 2 hallucinates — switches to climate change)
 ## LangGraph Integration
 
 ```bash
-pip install multiagent-eval langgraph openai
+pip install -e . langgraph openai
 export OPENAI_API_KEY=sk-...
 python examples/quickstart_langgraph.py
 ```

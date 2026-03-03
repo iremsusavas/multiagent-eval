@@ -10,11 +10,11 @@ readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
 authors = [
-    {name = "MultiAgent-Eval Contributors"}
+    {name = "İrem Suşavaş", email = "iremsu@proton.me"}
 ]
-keywords = ["multi-agent", "llm-evaluation", "agent-tracing", "langgraph", "crewai"]
+keywords = ["multi-agent", "llm-evaluation", "agent-tracing", "langgraph", "crewai", "propagation"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -26,21 +26,48 @@ dependencies = [
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
     "litellm>=1.0",
-    "sentence-transformers>=2.2",
-    "numpy>=1.24",
-    "networkx>=3.0",
-    "matplotlib>=3.7",
     "pyyaml>=6.0",
     "typer>=0.9",
-    "streamlit>=1.28",
-    "pyvis>=0.3",
     "jinja2>=3.1",
     "structlog>=23.0",
 ]
 
 [project.optional-dependencies]
-otel = ["opentelemetry-api>=1.20", "opentelemetry-sdk>=1.20", "opentelemetry-exporter-otlp>=1.20"]
-postgres = ["sqlalchemy>=2.0", "psycopg2-binary>=2.9"]
+# Semantic similarity for error_propagation_score and inter_agent_consistency
+# WARNING: pulls PyTorch (~1 GB). Use only when embedding-level precision is required.
+# Without this, multiagent-eval uses built-in TF-IDF cosine similarity (no dependencies).
+semantic = [
+    "sentence-transformers>=2.2",
+    "numpy>=1.24",
+]
+
+# Streamlit-based evaluation dashboard
+dashboard = [
+    "streamlit>=1.28",
+    "networkx>=3.0",
+    "pyvis>=0.3",
+    "matplotlib>=3.7",
+]
+
+# OpenTelemetry tracing (Datadog, Grafana, Jaeger)
+otel = [
+    "opentelemetry-api>=1.20",
+    "opentelemetry-sdk>=1.20",
+    "opentelemetry-exporter-otlp>=1.20",
+]
+
+# Database persistence
+postgres = [
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+]
+
+# Install everything
+all = [
+    "multiagent-eval[semantic,dashboard,otel]",
+]
+
+# Development
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
@@ -52,9 +79,9 @@ dev = [
 multiagent-eval = "multiagent_eval.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/multiagent-eval/multiagent-eval"
-Repository = "https://github.com/multiagent-eval/multiagent-eval"
-Documentation = "https://github.com/multiagent-eval/multiagent-eval#readme"
+Homepage = "https://github.com/iremsusavas/multiagent-eval"
+Repository = "https://github.com/iremsusavas/multiagent-eval"
+Documentation = "https://github.com/iremsusavas/multiagent-eval#readme"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -28,7 +28,7 @@ class EvalConfig:
 
     pipeline_name: str
     golden_dataset_path: Optional[str] = None
-    metrics: list[str] = field(default_factory=lambda: ["factual_accuracy", "inter_agent_consistency"])
+    metrics: list[str] = field(default_factory=lambda: ["factual_accuracy", "inter_agent_consistency", "error_propagation_score"])
     thresholds: dict[str, float] = field(default_factory=dict)
     judge_primary_model: str = "gpt-4o"
     judge_fallback_model: str = "claude-sonnet-4-6"
