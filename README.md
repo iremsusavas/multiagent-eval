@@ -1,6 +1,5 @@
 # multiagent-eval
 
-> The first open-source evaluation framework built specifically
 > for multi-agent AI systems.
 
 Single-LLM eval tools (RAGAS, DeepEval) miss what actually
