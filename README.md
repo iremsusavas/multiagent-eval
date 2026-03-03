@@ -38,22 +38,12 @@ That's the gap multiagent-eval closes.
 ## Quickstart
 
 ```bash
-pip install multiagent-eval
-```
+git clone https://github.com/iremsusavas/multiagent-eval.git
+cd multiagent-eval
+pip install -e .
 
-```python
-from multiagent_eval import evaluate
-from multiagent_eval.integrations import LangGraphAdapter
-
-# Option A: Pass adapter (LangGraph, CrewAI, AutoGen)
-adapter = LangGraphAdapter(graph=my_langgraph_graph)
-result = evaluate(pipeline=adapter, dataset="datasets/my_golden_set.json")
-
-# Option B: Pass PipelineTrace directly
-result = evaluate(pipeline=my_trace, ground_truth={"expected": "..."})
-
-print(result.overall_score)   # 0.84
-print(result.passed())       # True / False
+# Zero-dependency demo — no API key needed
+python examples/quickstart_mock.py
 ```
 
 ---
